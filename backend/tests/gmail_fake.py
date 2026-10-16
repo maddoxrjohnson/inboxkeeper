@@ -20,6 +20,7 @@ class FakeGmailHttp:
     def __init__(self, route: Route) -> None:
         self.route = route
         self.requests: list[tuple[str, str]] = []
+        self.on_batch_start: Callable[[], None] = lambda: None
 
     def request(
         self,
@@ -46,6 +47,7 @@ class FakeGmailHttp:
     def _batch(self, body: str, content_type: str) -> tuple[httplib2.Response, bytes]:
         boundary = re.search(r'boundary="?([^";]+)"?', content_type)
         assert boundary
+        self.on_batch_start()
         out = []
         for part in body.split(f"--{boundary.group(1)}"):
             content_id = re.search(r"Content-ID: <([^>]+)>", part)

@@ -11,11 +11,13 @@ from tests.gmail_fake import FakeGmailHttp, build_service, error, message_resour
 
 
 def make_provider(
-    route: Any, batch_size: int = 50
+    route: Any, batch_size: int = 20
 ) -> tuple[GmailProvider, FakeGmailHttp, list[float]]:
     http = FakeGmailHttp(route)
     sleeps: list[float] = []
-    provider = GmailProvider(build_service(http), sleep=sleeps.append, batch_size=batch_size)
+    provider = GmailProvider(
+        build_service(http), sleep=sleeps.append, batch_size=batch_size, quota_per_second=None
+    )
     return provider, http, sleeps
 
 
@@ -207,3 +209,100 @@ def test_top_level_requests_retry_with_backoff() -> None:
 
     assert provider.get_account_email() == "me@gmail.com"
     assert len(sleeps) == 1
+
+
+def test_concurrency_limit_shrinks_batches_until_requests_fit() -> None:
+    """Mimics Gmail rejecting everything past N simultaneous calls in a batch."""
+    limit = 8
+    in_batch = 0
+
+    def route(method: str, path: str, query: dict[str, list[str]], body: Any) -> tuple[int, Any]:
+        nonlocal in_batch
+        in_batch += 1
+        if in_batch > limit:
+            return error(429, "Too many concurrent requests for user.")
+        return 200, message_resource(path.rsplit("/", 1)[1])
+
+    def new_batch() -> None:
+        nonlocal in_batch
+        in_batch = 0
+
+    provider, http, _ = make_provider(route)
+    http.on_batch_start = new_batch
+    ids = [f"m{i}" for i in range(50)]
+
+    metas = provider.get_messages(ids)
+
+    assert [m.id for m in metas] == ids
+    assert provider._batch_size <= limit
+
+
+def test_requests_are_paced_to_the_quota() -> None:
+    now = 0.0
+
+    def clock() -> float:
+        return now
+
+    def sleep(seconds: float) -> None:
+        nonlocal now
+        now += seconds
+
+    http = FakeGmailHttp(lambda m, p, q, b: (200, message_resource(p.rsplit("/", 1)[1])))
+    provider = GmailProvider(
+        build_service(http), sleep=sleep, clock=clock, batch_size=10, quota_per_second=100
+    )
+
+    provider.get_messages([f"m{i}" for i in range(40)])
+
+    # 4 batches of 10 gets at 5 units each = 50 units, i.e. half a second per
+    # batch at 100 units/s. The first goes out immediately.
+    assert now == pytest.approx(1.5)
+
+
+def test_backoff_outlasts_a_per_minute_quota_window() -> None:
+    """Gmail's per-minute quota can reject everything for up to a minute."""
+    now = 0.0
+
+    def sleep(seconds: float) -> None:
+        nonlocal now
+        now += seconds
+
+    def route(method: str, path: str, query: dict[str, list[str]], body: Any) -> tuple[int, Any]:
+        if now < 60:
+            return error(403, "rateLimitExceeded")
+        return 200, message_resource(path.rsplit("/", 1)[1])
+
+    http = FakeGmailHttp(route)
+    provider = GmailProvider(build_service(http), sleep=sleep, quota_per_second=None)
+
+    assert [m.id for m in provider.get_messages(["a"])] == ["a"]
+
+
+def test_send_rate_adapts_to_a_low_per_minute_quota() -> None:
+    """A project whose real quota is far below what Gmail documents."""
+    now = 0.0
+    window: list[tuple[float, int]] = []
+    quota_per_minute = 1500
+
+    def sleep(seconds: float) -> None:
+        nonlocal now
+        now += seconds
+
+    def route(method: str, path: str, query: dict[str, list[str]], body: Any) -> tuple[int, Any]:
+        window[:] = [(t, u) for t, u in window if t > now - 60]
+        if sum(u for _, u in window) + 5 > quota_per_minute:
+            return error(403, "rateLimitExceeded")
+        window.append((now, 5))
+        return 200, message_resource(path.rsplit("/", 1)[1])
+
+    provider = GmailProvider(
+        build_service(FakeGmailHttp(route)), sleep=sleep, clock=lambda: now, batch_size=10
+    )
+    ids = [f"m{i}" for i in range(1000)]
+
+    assert len(provider.get_messages(ids)) == 1000
+    assert provider._rate is not None
+    assert provider._rate < 100
+    # 1000 fetches at 1500 units/min can't take less than ~3 minutes; make
+    # sure we got through without wildly overshooting that.
+    assert 180 <= now < 600
