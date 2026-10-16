@@ -58,11 +58,12 @@ class FakeProvider:
 
     def trash(self, ids: Sequence[str]) -> None:
         self.calls.append(("trash", tuple(ids)))
-        self.modify_labels(ids, add=[TRASH])
+        # Like Gmail, ids that no longer exist are ignored rather than failing the call.
+        self.modify_labels([i for i in ids if i in self._messages], add=[TRASH])
 
     def untrash(self, ids: Sequence[str]) -> None:
         self.calls.append(("untrash", tuple(ids)))
-        self.modify_labels(ids, remove=[TRASH])
+        self.modify_labels([i for i in ids if i in self._messages], remove=[TRASH])
 
     # Test helpers for simulating activity that happens outside the app.
 
