@@ -62,6 +62,24 @@ class MailboxSync:
             on_progress=on_progress,
         )
 
+    def catch_up(self) -> bool:
+        """Apply whatever changed since the last sync.
+
+        Returns False when that would take a full sync (no completed first
+        sync, or the cursor expired), leaving the cache untouched.
+        """
+        account = self.provider.get_account_email()
+        with Session(self.engine) as session:
+            state = session.get(SyncState, account)
+            if state is None or not state.full_sync_complete or not state.cursor:
+                return False
+            session.expunge(state)
+        try:
+            self._incremental(state, None)
+        except CursorExpiredError:
+            return False
+        return True
+
     def _load_state(self, account: str) -> SyncState:
         with Session(self.engine) as session:
             others = session.exec(select(SyncState).where(SyncState.account != account)).all()

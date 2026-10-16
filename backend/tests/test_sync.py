@@ -197,3 +197,30 @@ def test_background_sync_refuses_concurrent_runs(engine: Engine) -> None:
     assert runner.status.state == "done"
     runner.start()
     runner.join(timeout=5)
+
+
+def test_catch_up_applies_recent_changes(engine: Engine) -> None:
+    msg = make_message()
+    provider = FakeProvider([msg])
+    sync = MailboxSync(provider, engine)
+    sync.run()
+    provider.modify_labels([msg.id], add=[STARRED])
+
+    assert sync.catch_up()
+    assert STARRED in cached(engine)[msg.id].labels
+
+
+def test_catch_up_never_starts_a_full_sync(engine: Engine) -> None:
+    provider = FakeProvider([make_message()])
+    sync = MailboxSync(provider, engine)
+    assert not sync.catch_up()
+
+    sync.run(limit=1)
+    assert not sync.catch_up()
+
+    sync.run()
+    provider.deliver(make_message())
+    provider.expire_history()
+    provider.calls.clear()
+    assert not sync.catch_up()
+    assert provider.calls == []
