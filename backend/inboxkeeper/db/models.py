@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, Column
+from sqlalchemy import JSON, Column, UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 from inboxkeeper.db.types import UTCDateTime
@@ -99,3 +99,25 @@ class ActionItem(SQLModel, table=True):
     subject: str = ""
     size_estimate: int = 0
     skipped_reason: str | None = None
+
+
+class Proposal(SQLModel, table=True):
+    """A suggested action from a scanner, waiting for the user to review it."""
+
+    __table_args__ = (UniqueConstraint("scanner", "key"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    scanner: str = Field(index=True)
+    # Identifies the group within its scanner (a sender, a list), so a rescan
+    # updates the same proposal and remembers if the user dismissed it.
+    key: str
+    kind: str
+    title: str
+    reason: str
+    message_ids: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    # Matching mail that the protection rules held back.
+    protected_ids: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    total_size: int = 0
+    status: str = "pending"  # pending | applied | dismissed
+    batch_id: int | None = Field(default=None, foreign_key="actionbatch.id", ondelete="SET NULL")
+    updated_at: datetime = Field(default_factory=utcnow, sa_type=UTCDateTime)

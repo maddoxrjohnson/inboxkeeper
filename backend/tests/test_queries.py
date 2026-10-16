@@ -1,6 +1,6 @@
 from sqlmodel import Session, func, select
 
-from inboxkeeper.db.models import ActionBatch, ActionItem, Message, SyncState
+from inboxkeeper.db.models import ActionBatch, ActionItem, Message, Proposal, SyncState
 from inboxkeeper.db.queries import clear_mailbox_data, has_label
 from inboxkeeper.db.session import create_db_engine
 from tests.factories import make_message
@@ -40,6 +40,7 @@ def test_clear_mailbox_data() -> None:
         session.flush()
         assert batch.id is not None
         session.add(ActionItem(batch_id=batch.id, message_id="m1"))
+        session.add(Proposal(scanner="s", key="k", kind="archive", title="", reason=""))
         session.commit()
 
         clear_mailbox_data(session, keep_account="new@example.com")
@@ -48,6 +49,7 @@ def test_clear_mailbox_data() -> None:
         assert session.exec(select(Message)).all() == []
         assert session.exec(select(ActionBatch)).all() == []
         assert session.exec(select(ActionItem)).all() == []
+        assert session.exec(select(Proposal)).all() == []
         assert [s.account for s in session.exec(select(SyncState))] == ["new@example.com"]
 
         clear_mailbox_data(session)

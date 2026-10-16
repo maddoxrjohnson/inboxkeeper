@@ -1,7 +1,7 @@
 from sqlalchemy import ColumnElement, exists, func, select
 from sqlmodel import Session, col, delete
 
-from inboxkeeper.db.models import ActionBatch, ActionItem, Message, SyncState
+from inboxkeeper.db.models import ActionBatch, ActionItem, Message, Proposal, SyncState
 
 
 def has_label(label: str) -> ColumnElement[bool]:
@@ -11,8 +11,9 @@ def has_label(label: str) -> ColumnElement[bool]:
 
 
 def clear_mailbox_data(session: Session, *, keep_account: str | None = None) -> None:
-    """Delete everything stored about the mailbox: cached headers, sync state
-    and the action log. `keep_account` keeps that account's sync state."""
+    """Delete everything stored about the mailbox: cached headers, sync state,
+    proposals and the action log. `keep_account` keeps that account's sync state."""
+    session.exec(delete(Proposal))
     session.exec(delete(ActionItem))
     session.exec(delete(ActionBatch))
     session.exec(delete(Message))
