@@ -772,6 +772,7 @@ dependencies = [
     { name = "google-api-python-client" },
     { name = "google-auth-oauthlib" },
     { name = "pydantic-settings" },
+    { name = "requests" },
     { name = "sqlmodel" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -783,6 +784,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "types-requests" },
 ]
 
 [package.metadata]
@@ -791,6 +793,7 @@ requires-dist = [
     { name = "google-api-python-client", specifier = ">=2.201.0" },
     { name = "google-auth-oauthlib", specifier = ">=1.5.0" },
     { name = "pydantic-settings", specifier = ">=2.4" },
+    { name = "requests", specifier = ">=2.34.2" },
     { name = "sqlmodel", specifier = ">=0.0.48" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.30" },
 ]
@@ -802,6 +805,7 @@ dev = [
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-cov", specifier = ">=5.0" },
     { name = "ruff", specifier = ">=0.6" },
+    { name = "types-requests", specifier = ">=2.33.0.20261006" },
 ]
 
 [[package]]
@@ -1479,6 +1483,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/ee/9f/c5201d42a484c061e528825fc8e2d565f5abd50a4ced6fb7d29c4ec99b2b/truststore-0.10.5.tar.gz", hash = "sha256:30d36967ccaded5cbb38d602c433f53600036c79d502f4533a49b60a03bbefcd", size = 28091, upload-time = "2026-10-12T22:27:31.808Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/51/e9/3a7820be2bb0fe53b6bc9c3be26d3d1158004e4c3ab953aa6840b955b1e9/truststore-0.10.5-py3-none-any.whl", hash = "sha256:9aaaedaefaf06d8b206278cf8b5012bc897f485a874503501e12d776df78951c", size = 19017, upload-time = "2026-10-12T22:27:30.377Z" },
+]
+
+[[package]]
+name = "types-requests"
+version = "2.33.0.20261006"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "urllib3" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/57/15/9b7e2e2e7c87d01366185b198b3febc6bc0c973f2bf21a62da4ab7d3495e/types_requests-2.33.0.20261006.tar.gz", hash = "sha256:0652999e9306aea345f40732d58fa49a7f6cade6a0d74d92119c5c8d82eddaf0", size = 25316, upload-time = "2026-10-06T08:15:57.782Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4d/72/b82789207b3d360ce9f5a4372c790c52cc3dd928aeb7d4faeec652b651b2/types_requests-2.33.0.20261006-py3-none-any.whl", hash = "sha256:26cc8146505cab33cda9737991929e4144c559bebe05078ccc6998f27c4ca2c1", size = 21445, upload-time = "2026-10-06T08:15:56.658Z" },
 ]
 
 [[package]]
