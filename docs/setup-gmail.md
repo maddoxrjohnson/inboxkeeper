@@ -53,7 +53,7 @@ Only message headers (sender, subject, date, labels, size) are stored
 locally, in `~/.inboxkeeper/inboxkeeper.db`. Message bodies are never
 downloaded. The access token lives in `~/.inboxkeeper/token.json` with
 owner-only permissions. **Disconnect** in the app revokes the token with
-Google and deletes both files' contents.
+Google, deletes it and clears the local cache.
 
 ## Troubleshooting
 
