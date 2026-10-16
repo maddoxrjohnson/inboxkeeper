@@ -1,9 +1,12 @@
 """Keeps the local message cache in step with the mailbox."""
 
 import logging
+import threading
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import datetime
 from itertools import batched
+from typing import Literal
 
 from sqlalchemy import Engine
 from sqlmodel import Session, col, delete, select
@@ -170,3 +173,66 @@ class MailboxSync:
             state.last_synced_at = utcnow()
             session.add(state)
             session.commit()
+
+
+@dataclass(frozen=True, slots=True)
+class SyncStatus:
+    state: Literal["idle", "running", "done", "error"] = "idle"
+    processed: int = 0
+    total: int = 0
+    result: SyncResult | None = None
+    error: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+
+class SyncAlreadyRunningError(Exception):
+    pass
+
+
+class BackgroundSync:
+    """Runs one sync at a time on a worker thread and exposes its progress."""
+
+    def __init__(self, engine: Engine, provider_factory: Callable[[], MailProvider]) -> None:
+        self.engine = engine
+        self.provider_factory = provider_factory
+        self._lock = threading.Lock()
+        self._status = SyncStatus()
+        self._thread: threading.Thread | None = None
+
+    @property
+    def status(self) -> SyncStatus:
+        with self._lock:
+            return self._status
+
+    def start(self, *, force_full: bool = False, limit: int | None = None) -> SyncStatus:
+        with self._lock:
+            if self._status.state == "running":
+                raise SyncAlreadyRunningError
+            self._status = SyncStatus(state="running", started_at=utcnow())
+            self._thread = threading.Thread(
+                target=self._run, args=(force_full, limit), name="mailbox-sync", daemon=True
+            )
+            self._thread.start()
+            return self._status
+
+    def join(self, timeout: float | None = None) -> None:
+        if self._thread is not None:
+            self._thread.join(timeout)
+
+    def _run(self, force_full: bool, limit: int | None) -> None:
+        def on_progress(done: int, total: int) -> None:
+            self._update(processed=done, total=total)
+
+        try:
+            sync = MailboxSync(self.provider_factory(), self.engine)
+            result = sync.run(force_full=force_full, limit=limit, on_progress=on_progress)
+        except Exception as exc:
+            log.exception("sync failed")
+            self._update(state="error", error=str(exc) or type(exc).__name__, finished_at=utcnow())
+        else:
+            self._update(state="done", result=result, finished_at=utcnow())
+
+    def _update(self, **changes: object) -> None:
+        with self._lock:
+            self._status = replace(self._status, **changes)  # type: ignore[arg-type]

@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 from sqlalchemy import Engine
 from sqlmodel import Session, select
@@ -6,7 +8,7 @@ from inboxkeeper.db.models import Message, SyncState
 from inboxkeeper.db.session import create_db_engine
 from inboxkeeper.providers.base import INBOX, SPAM, STARRED
 from inboxkeeper.providers.fake import FakeProvider
-from inboxkeeper.sync import MailboxSync
+from inboxkeeper.sync import BackgroundSync, MailboxSync, SyncAlreadyRunningError
 from tests.factories import make_message
 
 
@@ -148,3 +150,50 @@ def test_switching_accounts_clears_cache_even_if_new_account_has_state(engine: E
     MailboxSync(FakeProvider([other], email="new@example.com"), engine).run()
 
     assert set(cached(engine)) == {other.id}
+
+
+def test_background_sync_reports_completion(engine: Engine) -> None:
+    provider = FakeProvider([make_message() for _ in range(3)])
+    runner = BackgroundSync(engine, lambda: provider)
+
+    assert runner.start().state == "running"
+    runner.join(timeout=5)
+
+    status = runner.status
+    assert status.state == "done"
+    assert status.processed == status.total == 3
+    assert status.result is not None
+    assert status.result.fetched == 3
+    assert status.finished_at is not None
+
+
+def test_background_sync_captures_errors(engine: Engine) -> None:
+    def broken() -> FakeProvider:
+        raise RuntimeError("token revoked")
+
+    runner = BackgroundSync(engine, broken)
+    runner.start()
+    runner.join(timeout=5)
+
+    assert runner.status.state == "error"
+    assert runner.status.error == "token revoked"
+
+
+def test_background_sync_refuses_concurrent_runs(engine: Engine) -> None:
+    gate = threading.Event()
+    provider = FakeProvider([make_message()])
+
+    def slow_factory() -> FakeProvider:
+        gate.wait(timeout=5)
+        return provider
+
+    runner = BackgroundSync(engine, slow_factory)
+    runner.start()
+    with pytest.raises(SyncAlreadyRunningError):
+        runner.start()
+    gate.set()
+    runner.join(timeout=5)
+
+    assert runner.status.state == "done"
+    runner.start()
+    runner.join(timeout=5)
