@@ -61,18 +61,19 @@ class MailboxSync:
 
     def _load_state(self, account: str) -> SyncState:
         with Session(self.engine) as session:
-            states = session.exec(select(SyncState)).all()
-            state = next((s for s in states if s.account == account), None)
+            others = session.exec(select(SyncState).where(SyncState.account != account)).all()
+            if others:
+                # A different account was synced before. Its cached mail would
+                # only confuse the scanners, so start clean.
+                session.exec(delete(Message))
+                session.exec(delete(SyncState).where(col(SyncState.account) != account))
+
+            state = session.get(SyncState, account)
             if state is None:
-                # A different account was connected before. Its cached mail
-                # would only confuse the scanners, so start clean.
-                if states:
-                    session.exec(delete(Message))
-                    session.exec(delete(SyncState))
                 state = SyncState(account=account)
                 session.add(state)
-                session.commit()
-                session.refresh(state)
+            session.commit()
+            session.refresh(state)
             session.expunge(state)
             return state
 

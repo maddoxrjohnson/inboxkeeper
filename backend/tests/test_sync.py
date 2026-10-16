@@ -136,3 +136,15 @@ def test_progress_is_reported(engine: Engine) -> None:
     MailboxSync(provider, engine, batch_size=2).run(on_progress=lambda d, t: seen.append((d, t)))
 
     assert seen == [(0, 5), (2, 5), (4, 5), (5, 5)]
+
+
+def test_switching_accounts_clears_cache_even_if_new_account_has_state(engine: Engine) -> None:
+    MailboxSync(FakeProvider([make_message()], email="old@example.com"), engine).run()
+    with Session(engine) as session:
+        session.add(SyncState(account="new@example.com"))
+        session.commit()
+
+    other = make_message()
+    MailboxSync(FakeProvider([other], email="new@example.com"), engine).run()
+
+    assert set(cached(engine)) == {other.id}
