@@ -12,6 +12,7 @@ from sqlalchemy import Engine
 from sqlmodel import Session, col, delete, select
 
 from inboxkeeper.db.models import Message, SyncState, utcnow
+from inboxkeeper.db.queries import clear_mailbox_data
 from inboxkeeper.providers.base import TRASH, CursorExpiredError, MailProvider
 
 log = logging.getLogger(__name__)
@@ -84,10 +85,9 @@ class MailboxSync:
         with Session(self.engine) as session:
             others = session.exec(select(SyncState).where(SyncState.account != account)).all()
             if others:
-                # A different account was synced before. Its cached mail would
-                # only confuse the scanners, so start clean.
-                session.exec(delete(Message))
-                session.exec(delete(SyncState).where(col(SyncState.account) != account))
+                # A different account was synced before. Its cached mail and
+                # action log would only confuse things, so start clean.
+                clear_mailbox_data(session, keep_account=account)
 
             state = session.get(SyncState, account)
             if state is None:

@@ -3,12 +3,13 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import RedirectResponse
-from sqlmodel import Session, delete, func, select
+from sqlmodel import Session, func, select
 
 from inboxkeeper.api.context import Ctx
 from inboxkeeper.api.schemas import AccountOut
 from inboxkeeper.auth.google import AuthError
 from inboxkeeper.db.models import Message, SyncState
+from inboxkeeper.db.queries import clear_mailbox_data
 
 log = logging.getLogger(__name__)
 
@@ -68,11 +69,10 @@ def disconnect(ctx: Ctx) -> None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Wait for the current sync to finish.")
     ctx.auth.disconnect()
     ctx.forget_account()
-    # Disconnecting also forgets the cached headers; nothing about the mailbox
-    # should linger on disk once the user has cut access.
+    # Disconnecting also forgets cached headers and the action log; nothing
+    # about the mailbox should linger on disk once the user has cut access.
     with Session(ctx.engine) as session:
-        session.exec(delete(Message))
-        session.exec(delete(SyncState))
+        clear_mailbox_data(session)
         session.commit()
 
 
