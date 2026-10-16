@@ -65,8 +65,10 @@ def oauth_callback(
 
 @router.post("/api/auth/disconnect", status_code=status.HTTP_204_NO_CONTENT)
 def disconnect(ctx: Ctx) -> None:
-    if ctx.sync.status.state == "running":
-        raise HTTPException(status.HTTP_409_CONFLICT, "Wait for the current sync to finish.")
+    if ctx.sync.status.state == "running" or ctx.action_lock.locked():
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Wait for the current sync or action to finish."
+        )
     ctx.auth.disconnect()
     ctx.forget_account()
     # Disconnecting also forgets cached headers and the action log; nothing

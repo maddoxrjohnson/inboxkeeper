@@ -316,6 +316,14 @@ class ActionExecutor:
             session.commit()
 
 
+def can_undo(batch: ActionBatch) -> bool:
+    if batch.status not in ("applied", "failed") or batch.applied_count == 0:
+        return False
+    if batch.kind == ActionKind.TRASH:
+        return utcnow() - batch.created_at <= TRASH_RETENTION
+    return True
+
+
 def _item(batch_id: int, cand: Candidate) -> ActionItem:
     return ActionItem(
         batch_id=batch_id,

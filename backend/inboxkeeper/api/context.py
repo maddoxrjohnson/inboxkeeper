@@ -1,3 +1,4 @@
+import threading
 from collections.abc import Callable
 from typing import Annotated
 
@@ -40,6 +41,8 @@ class AppContext:
         self.auth = auth
         self.provider_factory = provider_factory
         self.sync = BackgroundSync(engine, provider_factory)
+        # Held while an action or undo is changing the mailbox.
+        self.action_lock = threading.Lock()
         self._account_email: str | None = None
 
     @property

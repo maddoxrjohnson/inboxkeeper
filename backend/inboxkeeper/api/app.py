@@ -4,7 +4,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from inboxkeeper import __version__
 from inboxkeeper.api.context import AppContext, ProviderFactory, gmail_provider_factory
-from inboxkeeper.api.routes import account, stats, sync
+from inboxkeeper.api.routes import account, actions, proposals, stats, sync
 from inboxkeeper.api.security import OriginCheckMiddleware
 from inboxkeeper.auth.google import GoogleAuth
 from inboxkeeper.config import Settings, get_settings
@@ -43,4 +43,6 @@ def create_app(
     app.include_router(account.router)
     app.include_router(sync.router)
     app.include_router(stats.router)
+    app.include_router(actions.router)
+    app.include_router(proposals.router)
     return app

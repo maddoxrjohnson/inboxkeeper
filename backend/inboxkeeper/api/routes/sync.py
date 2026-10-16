@@ -17,6 +17,8 @@ def start_sync(ctx: Ctx, body: SyncRequest | None = None) -> SyncStatusOut:
     body = body or SyncRequest()
     if not ctx.connected:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Connect an account first.")
+    if ctx.action_lock.locked():
+        raise HTTPException(status.HTTP_409_CONFLICT, "Wait for the current action to finish.")
     try:
         sync_status = ctx.sync.start(force_full=body.full, limit=body.limit)
     except SyncAlreadyRunningError as exc:
