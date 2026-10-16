@@ -9,7 +9,7 @@ from inboxkeeper.config import Settings
 
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
-    return Settings(data_dir=tmp_path)
+    return Settings(data_dir=tmp_path, allowed_hosts=["127.0.0.1", "localhost", "testserver"])
 
 
 @pytest.fixture
