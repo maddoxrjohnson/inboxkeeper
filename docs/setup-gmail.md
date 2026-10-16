@@ -39,6 +39,14 @@ Save the downloaded file as:
 ~/.inboxkeeper/credentials.json
 ```
 
+On Windows with WSL, `~` means your Linux home, not `C:\Users\<you>`. If the
+file landed in your Windows Downloads folder, copy it across from a WSL shell:
+
+```bash
+mkdir -p ~/.inboxkeeper
+cp /mnt/c/Users/<you>/Downloads/client_secret_*.json ~/.inboxkeeper/credentials.json
+```
+
 Then open the app, click **Connect Gmail** and approve access. Make sure the
 Gmail permission checkbox stays ticked on Google's consent screen.
 
