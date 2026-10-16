@@ -24,6 +24,7 @@ def get_account(ctx: Ctx) -> AccountOut:
         connected=ctx.connected,
         email=ctx.account_email(),
         has_client_secrets=ctx.auth.has_client_secrets(),
+        client_secrets_path=str(ctx.auth.client_secrets_path),
         last_synced_at=state.last_synced_at if state else None,
         message_count=message_count,
     )

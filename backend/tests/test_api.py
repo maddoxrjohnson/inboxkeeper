@@ -23,11 +23,12 @@ def sync_and_wait(client: TestClient, ctx: AppContext, **body: Any) -> dict[str,
     return result
 
 
-def test_account_when_nothing_is_set_up(client: TestClient) -> None:
+def test_account_when_nothing_is_set_up(client: TestClient, ctx: AppContext) -> None:
     assert client.get("/api/account").json() == {
         "connected": False,
         "email": None,
         "has_client_secrets": False,
+        "client_secrets_path": str(ctx.auth.client_secrets_path),
         "last_synced_at": None,
         "message_count": 0,
     }

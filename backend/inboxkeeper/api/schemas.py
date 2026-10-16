@@ -10,6 +10,7 @@ class AccountOut(BaseModel):
     connected: bool
     email: str | None
     has_client_secrets: bool
+    client_secrets_path: str
     last_synced_at: datetime | None
     message_count: int
 
