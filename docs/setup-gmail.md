@@ -76,5 +76,13 @@ verification.
 **"The OAuth client must be of type Desktop app"**: the JSON came from a Web
 application client. Create a new Desktop app client and download that instead.
 
+**First sync is slow**: Gmail limits how many requests each user can make per
+minute, and the limit on a new Google Cloud project can be far below the
+documented one. inboxkeeper adapts its pace to whatever your project allows,
+which in testing has been around 5 messages a second. The first sync only
+happens once (later syncs fetch just what changed) and it resumes if
+interrupted. You can see your project's limit under **APIs & Services →
+Gmail API → Quotas & System Limits**.
+
 **Data directory elsewhere**: set `INBOXKEEPER_DATA_DIR` before starting the
 backend to keep everything in a different folder.
