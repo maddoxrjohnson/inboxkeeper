@@ -73,3 +73,29 @@ class SyncState(SQLModel, table=True):
     # sync can pick up where it left off instead of refetching everything.
     full_sync_complete: bool = False
     last_synced_at: datetime | None = Field(default=None, sa_type=UTCDateTime)
+
+
+class ActionBatch(SQLModel, table=True):
+    """One user-approved action and its outcome. The basis for undo."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    kind: str
+    status: str = "pending"  # pending -> applied | failed, then possibly undone
+    created_at: datetime = Field(default_factory=utcnow, sa_type=UTCDateTime, index=True)
+    undone_at: datetime | None = Field(default=None, sa_type=UTCDateTime)
+    applied_count: int = 0
+    skipped_count: int = 0
+    total_size: int = 0
+    error: str | None = None
+
+
+class ActionItem(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    batch_id: int = Field(foreign_key="actionbatch.id", index=True, ondelete="CASCADE")
+    message_id: str
+    # Labels before the action ran, so undo can put back exactly what was there.
+    prev_labels: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    sender_email: str = ""
+    subject: str = ""
+    size_estimate: int = 0
+    skipped_reason: str | None = None
