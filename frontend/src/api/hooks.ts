@@ -1,6 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
-import { disconnect, getAccount, getHealth, getStats, getSyncStatus, startSync } from './client'
+import {
+  disconnect,
+  getAccount,
+  getActions,
+  getHealth,
+  getStats,
+  getSyncStatus,
+  startSync,
+  undoAction,
+} from './client'
 
 export const useHealth = () => useQuery({ queryKey: ['health'], queryFn: getHealth })
 
@@ -44,5 +53,16 @@ export function useDisconnect() {
   return useMutation({
     mutationFn: disconnect,
     onSuccess: () => queryClient.invalidateQueries(),
+  })
+}
+
+export const useActions = () => useQuery({ queryKey: ['actions'], queryFn: getActions })
+
+export function useUndoAction() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: undoAction,
+    // Undo changes the mailbox, so counts and suggestions need refreshing too.
+    onSettled: () => queryClient.invalidateQueries(),
   })
 }

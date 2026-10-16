@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useAccount, useHealth, useStartSync } from './api/hooks'
+import { ActivityLog } from './components/ActivityLog'
 import { AuthBanner } from './components/AuthBanner'
 import { ConnectCard } from './components/ConnectCard'
 import { SetupGuide } from './components/SetupGuide'
@@ -49,6 +50,7 @@ function Main() {
       ) : (
         <>
           <SyncPanel account={account} />
+          <ActivityLog />
           {account.message_count > 0 && <StatsOverview />}
         </>
       )}

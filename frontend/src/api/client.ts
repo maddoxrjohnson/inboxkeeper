@@ -72,12 +72,29 @@ export interface Stats {
   top_senders: SenderStat[]
 }
 
+export type ActionKind = 'archive' | 'trash' | 'mark_read' | 'not_spam'
+
+export interface ActionBatch {
+  id: number
+  kind: ActionKind
+  status: 'pending' | 'applied' | 'failed' | 'undone'
+  created_at: string
+  undone_at: string | null
+  applied_count: number
+  skipped_count: number
+  total_size: number
+  error: string | null
+  can_undo: boolean
+}
+
 export const getHealth = () => apiGet<Health>('/health')
 export const getAccount = () => apiGet<Account>('/account')
 export const getSyncStatus = () => apiGet<SyncStatus>('/sync')
 export const startSync = (opts: { full?: boolean } = {}) => apiPost<SyncStatus>('/sync', opts)
 export const disconnect = () => apiPost<void>('/auth/disconnect')
 export const getStats = () => apiGet<Stats>('/stats')
+export const getActions = () => apiGet<ActionBatch[]>('/actions')
+export const undoAction = (id: number) => apiPost<ActionBatch>(`/actions/${id}/undo`)
 
 // Plain navigation, not fetch: the backend redirects the browser to Google.
 export const GOOGLE_SIGN_IN_URL = '/api/auth/google/start'
